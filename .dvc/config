@@ -1,0 +1,6 @@
+[core]
+    autostage = true
+[cache]
+    dir = /home/shared/dvc-cache
+    shared = group
+    type = symlink

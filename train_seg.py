@@ -40,9 +40,9 @@ class DatasetImp(fmp.GetDatasetSgmABC):
 
 class OptimizationImp(fmp.GetOptimizationABC):
     batch_size = 16
-    epochs = 3
+    epochs = 1
     lr = 0.001
-    gpu = 2
+    gpu = 1
     optimizer = torch.optim.Adam
     model = smp.FPN(encoder_name="efficientnet-b7", encoder_weights="imagenet",
                     activation="sigmoid", in_channels=3, classes=1,)

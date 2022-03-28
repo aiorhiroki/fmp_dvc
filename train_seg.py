@@ -47,7 +47,7 @@ class OptimizationImp(fmp.GetOptimizationABC):
     model = smp.FPN(encoder_name="efficientnet-b7", encoder_weights="imagenet",
                     activation="sigmoid", in_channels=3, classes=1,)
     loss_func = smp.losses.DiceLoss('binary', from_logits=False)
-    metric_func = fmp.metrics.Dice()
+    metric_func = fmp.metrics.Dice(from_logits=False)
 
     """
     def on_epoch_end(self):

@@ -1,6 +1,6 @@
 stages:
   train:
-    cmd: python train_seg.py
+    cmd: python -u train_seg.py
     deps:
     - seg_data/CamVid
     - train_seg.py

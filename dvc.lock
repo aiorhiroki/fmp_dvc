@@ -8,15 +8,15 @@ stages:
       size: 186849579
       nfiles: 1405
     - path: train_seg.py
-      md5: 6be9af9e74d500b9bff6ecbd97b5c3d4
-      size: 1746
+      md5: 8744d8c92f3702c4950e3711a8c52c49
+      size: 1747
     outs:
     - path: result/dice.json
-      md5: f466147f24bcc053c934c71c4b99ec34
-      size: 448
+      md5: f81dbec3bd209273b4380140fbdb7ed2
+      size: 2603
     - path: result/last.pth
-      md5: 7be7eaca7dc7e34ea89a144c2a08c497
+      md5: 22082154c27d75b46319b498f230be73
       size: 264352844
     - path: result/scores.json
-      md5: 7a91726f6a177b6528769adfe2893b41
-      size: 29
+      md5: 0221a7802d8a0c2d4696e443e059b29f
+      size: 30

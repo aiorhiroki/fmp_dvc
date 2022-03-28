@@ -1,0 +1,3 @@
+[submodule "farmer.pytorch"]
+	path = farmer.pytorch
+	url = git@github.com:aiorhiroki/farmer.pytorch.git

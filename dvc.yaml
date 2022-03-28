@@ -3,7 +3,10 @@ stages:
     cmd: python -u train_seg.py
     deps:
     - seg_data/CamVid
+    - farmer.pytorch
     - train_seg.py
+    params:
+    - train.comment
     outs:
     - result/last.pth
     metrics:

@@ -4,26 +4,26 @@ stages:
     cmd: python -u train_seg.py
     deps:
     - path: farmer.pytorch
-      md5: b8e3d94826407abd3f0e79f60358404e.dir
-      size: 73752
-      nfiles: 30
+      md5: 5db0e3369d8ad77f0c8285e38165c492.dir
+      size: 1803786360
+      nfiles: 14683
     - path: seg_data/CamVid
       md5: 30424acbbfd275aad68c44fb699416c2.dir
       size: 186849579
       nfiles: 1405
     - path: train_seg.py
-      md5: 9415a7b223a86cec988214a19d68f028
-      size: 1763
+      md5: 52b2a79edaf1a06f7e2ed55b5260aece
+      size: 1859
     params:
       params.yaml:
         train.comment: sdg
     outs:
     - path: result/dice.json
-      md5: b89a4a54dce6eb2e4f00d634f335b5b1
-      size: 2570
+      md5: 0cf045bb6bbc2bb5cb782cd063680dcb
+      size: 2559
     - path: result/last.pth
-      md5: 6740099d86e5d1ee0f846e5089cd42a6
-      size: 264352844
+      md5: be74992a43c1251beacc6c1f85776096
+      size: 264367628
     - path: result/scores.json
-      md5: aaafdee2240848c9803cd9edc1eaaf2e
-      size: 28
+      md5: 20d921b753b77af6f3def1aedaca505a
+      size: 607

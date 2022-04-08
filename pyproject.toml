@@ -5,12 +5,12 @@ description = ""
 authors = ["hiroki <1234defgsigeru@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7,<3.9"
+python = ">=3.8,<4.0"
 farmer-pytorch = {path = "farmer.pytorch", develop = true}
-albumentations = "^1.0.3"
-opencv-python = "^4.5.3"
 segmentation-models-pytorch = {git = "https://github.com/qubvel/segmentation_models.pytorch.git"}
-dvc = "^2.9.5"
+albumentations = "^1.1.0"
+opencv-python = "^4.5.5"
+dvc = "^2.10.1"
 
 [tool.poetry.dev-dependencies]
 

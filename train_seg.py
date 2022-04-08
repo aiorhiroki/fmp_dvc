@@ -42,12 +42,18 @@ class OptimizationImp(fmp.GetOptimizationABC):
     batch_size = 16
     epochs = 30
     lr = 0.001
-    gpu = 2
+    gpus = "3"
     optimizer = torch.optim.Adam
     model = smp.FPN(encoder_name="efficientnet-b7", encoder_weights="imagenet",
                     activation="sigmoid", in_channels=3, classes=1,)
     loss_func = smp.losses.DiceLoss('binary', from_logits=False)
-    metric_func = fmp.metrics.Dice(from_logits=False)
+
+    @staticmethod
+    def scheduler_func(epoch):
+        if epoch > 10:
+            return 0.95 ** (epoch-10)
+        else:
+            return 1
 
     """
     def on_epoch_end(self):

@@ -50,15 +50,7 @@ class OptimizationImp(fmp.GetOptimizationABC):
 
     @staticmethod
     def scheduler_func(epoch):
-        if epoch > 10:
-            return 0.95 ** (epoch-10)
-        else:
-            return 1
-
-    """
-    def on_epoch_end(self):
-        # set custom callbacks
-    """
+        return 0.95 ** (epoch-10) if epoch > 10 else 1
 
 
 def command():

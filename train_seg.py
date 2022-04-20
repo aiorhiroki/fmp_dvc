@@ -17,7 +17,7 @@ class AnnotationImp(fmp.GetAnnotationABC):
 
 
 class DatasetImp(fmp.GetDatasetSgmABC):
-    class_values = [8]
+    class_values = [1, 8]
     train_trans = albu.Compose(
         [albu.augmentations.geometric.resize.Resize(256, 512),
          albu.augmentations.transforms.HorizontalFlip(p=0.5)])
@@ -42,11 +42,11 @@ class OptimizationImp(fmp.GetOptimizationABC):
     batch_size = 16
     epochs = 30
     lr = 0.001
-    gpus = "3"
+    gpus = "2,3"
     optimizer_cls = torch.optim.Adam
     model = smp.FPN(encoder_name="efficientnet-b7", encoder_weights="imagenet",
-                    activation="sigmoid", in_channels=3, classes=1,)
-    loss_func = smp.losses.DiceLoss('binary', from_logits=False)
+                    activation="softmax", in_channels=3, classes=2,)
+    loss_func = smp.losses.DiceLoss('multilabel', from_logits=False)
 
     @staticmethod
     def scheduler_func(epoch):

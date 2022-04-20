@@ -4,7 +4,7 @@ import albumentations as albu
 import torch
 
 
-class AnnotationImp(fmp.GetAnnotationABC):
+class AnnotationImp(fmp.GetAnnotation):
     """
     def __call__(self):
         # you can override GetAnnotation function
@@ -12,7 +12,7 @@ class AnnotationImp(fmp.GetAnnotationABC):
     """
 
 
-class DatasetImp(fmp.GetDatasetSgmABC):
+class DatasetImp(fmp.GetDatasetSgm):
     """
     def preprocess(self, image, mask):
         # set custom preprocessing function
@@ -27,10 +27,13 @@ class DatasetImp(fmp.GetDatasetSgmABC):
     """
 
 
-class OptimizationImp(fmp.GetOptimizationABC):
-    @staticmethod
-    def scheduler_func(epoch):
-        return 0.95 ** (epoch-10) if epoch > 10 else 1
+class OptimizationImp(fmp.GetOptimization):
+    def set_scheduler(self):
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, 'max')
+
+    def on_epoch_end(self):
+        self.scheduler.step(self.logger.get_latest_metrics())
 
 
 def main():

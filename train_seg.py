@@ -28,12 +28,10 @@ class DatasetImp(fmp.GetDatasetSgm):
 
 
 class OptimizationImp(fmp.GetOptimization):
+    """
     def set_scheduler(self):
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, 'max')
-
-    def on_epoch_end(self):
-        self.scheduler.step(self.logger.get_latest_metrics())
+        self.scheduler = ...
+    """
 
 
 def main():

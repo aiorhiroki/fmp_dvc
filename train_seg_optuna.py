@@ -1,3 +1,4 @@
+import re
 import farmer_pytorch as fmp
 import segmentation_models_pytorch as smp
 import albumentations as albu
@@ -38,12 +39,10 @@ class OptimizationImp(fmp.GetOptimization):
     """
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Model training')
+    parser = argparse.ArgumentParser(description='To search model with optuna')
     # params of training
     parser.add_argument(
-        "--model_name", dest="model_name", default=None, type=str)
-    parser.add_argument(
-        "--dataset_name", dest="dataset_name", default=None, type=str)
+        "--study_name", dest="study_name", default=None, type=str)
     parser.add_argument(
         "--batch_size", dest="batch_size", default=None, type=int)
     parser.add_argument(
@@ -68,16 +67,33 @@ class Objective(object):
         [albu.augmentations.geometric.resize.Resize(256, 512)])
     # epochs
     epochs = 30
+
     # optimizer
-    optimizer_name_list = ["RAdam", "Adam", "RMSprop", "Adadelta", "AdamW", "SGD"]
+    optimizer_list = [
+    "torch.optim.RAdam", "torch.optim.Adam", "torch.optim.RMSprop",
+    "torch.optim.Adadelta", "torch.optim.AdamW", "torch.optim.SGD"]
     # lr
     lr_range = [1e-5, 1e-2]
     # loss_func
-    loss_name_list = ["Diceloss", "JaccardLoss", "TverskyLoss", "LovaszLoss"]
+    default_loss_func_args = dict(mode='multilabel', from_logits=False)
+    loss_func_list = [
+            dict(loss_func_name="smp.losses.DiceLoss", args=default_loss_func_args),
+            dict(loss_func_name="smp.losses.JaccardLoss", args=default_loss_func_args),
+            dict(loss_func_name="smp.losses.TverskyLoss", args=default_loss_func_args | dict(alpha = 0.3, beta = 0.7))
+        ]
     # models
+    default_args = dict(classes=2, activation="softmax")
+    default_encoders = ["efficientnet-b7", "timm-regnety_320", "resnet152",
+                        "resnext101_32x48d", "timm-efficientnet-l2"]
+
+    model_list = [
+        dict(model="smp.DeepLabV3Plus", args=default_args, encoders=default_encoders),
+        dict(model="smp.FPN", args=default_args, encoders=default_encoders + ["tu-xception71"]),
+        dict(model="smp.Linknet", args=default_args, encoders=default_encoders),
+        dict(model="smp.MAnet", args=default_args | dict(encoder_depth=5), encoders=default_encoders)
+        ]
     
     def __init__(self, args):
-        self.model_name = args.model_name
         self.batch_size = args.batch_size
         self.gpus = args.gpus
         self.result_dir = args.result_dir 
@@ -93,142 +109,58 @@ class Objective(object):
         train = DatasetImp(train_anno, self.class_values, self.train_trans)
         val = DatasetImp(val_anno, self.class_values, self.val_trans)
         print(f"\ntrial number:[{trial.number}], Params: {trial.params}\n")
+        try:
+            result = OptimizationImp(
+                    train, val,
+                    self.batch_size, 
+                    self.epochs, 
+                    self.lr, 
+                    self.gpus, 
+                    self.optimizer_cls, 
+                    self.model, 
+                    self.loss_func, 
+                    self.result_dir, 
+                    self.use_optuna)(trial)
+            return result
 
-        
-        return OptimizationImp(
-            train, val,
-            self.batch_size, 
-            self.epochs, 
-            self.lr, 
-            self.gpus, 
-            self.optimizer_cls, 
-            self.model, 
-            self.loss_func, 
-            self.result_dir, 
-            self.use_optuna)(trial)
+        except RuntimeError as e:
+            print(e)
+            if self.batch_size != 1:
+                self.batch_size = int(self.batch_size / 2)
+                print("batch_size:", self.batch_size)
+
+            return 0
 
 
-    def data_trans(self):
+    def data_trans(self, trial):
         # data augumentation
         pass
-
+            
     def choose_optim(self, trial):
-        optimizer_name = trial.suggest_categorical("optimizer", self.optimizer_name_list)
-        if optimizer_name == self.optimizer_name_list[0]:
-            self.optimizer_cls = torch.optim.RAdam
-        elif optimizer_name == self.optimizer_name_list[1]:
-            self.optimizer_cls = torch.optim.Adam
-        elif optimizer_name == self.optimizer_name_list[2]:
-            self.optimizer_cls = torch.optim.RMSprop
-        elif optimizer_name == self.optimizer_name_list[3]:
-            self.optimizer_cls = torch.optim.Adadelta
-        elif optimizer_name == self.optimizer_name_list[4]:
-            self.optimizer_cls = torch.optim.AdamW
-        elif optimizer_name == self.optimizer_name_list[5]:
-            self.optimizer_cls = torch.optim.SGD
+        optimizer_name = trial.suggest_categorical("optimizer", self.optimizer_list)
+        self.optimizer_cls = eval(optimizer_name)
     
     def choose_lr(self, trial):
         self.lr = trial.suggest_float("learning_rate", self.lr_range[0], self.lr_range[1], log=True)
     
     def choose_loss_func(self, trial):
-        loss_name = trial.suggest_categorical("loss_func", self.loss_name_list)
-        if loss_name == self.loss_name_list[0]:
-            self.loss_func = smp.losses.DiceLoss('multilabel', from_logits=False)
-        elif loss_name == self.loss_name_list[1]:
-            self.loss_func = smp.losses.JaccardLoss('multilabel', from_logits=False)
-        elif loss_name == self.loss_name_list[2]:
-            self.loss_func = smp.losses.TverskyLoss('multilabel', from_logits=False, alpha = 0.3, beta = 0.7)
-        elif loss_name == self.loss_name_list[3]:
-            self.loss_func = smp.losses.LovaszLoss('multilabel')
+        loss_func_num = trial.suggest_int("loss_func_num", 0, len(self.loss_func_list) - 1)
+        self.loss_func = eval(self.loss_func_list[loss_func_num]['loss_func_name']
+                              + "(**self.loss_func_list[loss_func_num]['args'])")
 
     def choose_model(self, trial):
-        if self.model_name == "deeplabv3p":
-        # for deeplabv3p parameter
-            encoder_name_list = ["efficientnet-b7", "timm-regnety_320", "resnet152", "tu-xception71", "resnext101_32x48d", "timm-efficientnet-l2"]
-
-            encoder_name = trial.suggest_categorical("encoder_name", encoder_name_list)
-            if encoder_name == encoder_name_list[4]:
-                weights = "instagram"
-            elif encoder_name == encoder_name_list[5]:
-                weights = "noisy-student"
-            else:
-                weights = "imagenet"
-
-            self.model = smp.DeepLabV3Plus(encoder_name=encoder_name, encoder_depth=5,
-                                    encoder_weights=weights, encoder_output_stride=16,
-                                    decoder_channels=256, decoder_atrous_rates=(21, 24, 36),
-                                    in_channels=3, classes=2, activation="sigmoid", upsampling=4, aux_params=None)
-
-        elif self.model_name == "FPN":
-            # for FPN parameter
-            encoder_name_list = ["efficientnet-b7", "timm-regnety_320", "resnet152", "tu-xception71", "resnext101_32x48d", "timm-efficientnet-l2"]
-
-            encoder_name = trial.suggest_categorical("encoder_name", encoder_name_list)
-            if encoder_name == encoder_name_list[4]:
-                weights = "instagram"
-            elif encoder_name == encoder_name_list[5]:
-                weights = "noisy-student"
-            else:
-                weights = "imagenet"
-
-            self.model = smp.FPN(encoder_name=encoder_name, 
-                            encoder_depth=5, 
-                            encoder_weights=weights, 
-                            decoder_pyramid_channels=256, 
-                            decoder_segmentation_channels=128, 
-                            decoder_merge_policy='add', 
-                            decoder_dropout=0.2, 
-                            in_channels=3, 
-                            classes=2, 
-                            activation="sigmoid", 
-                            upsampling=4, 
-                            aux_params=None)
-
-        elif self.model_name == "Linknet":
-            encoder_name_list = ["efficientnet-b7", "timm-regnety_320", "resnet152", "tu-xception71", "resnext101_32x48d", "timm-efficientnet-l2"]
-
-            encoder_name = trial.suggest_categorical("encoder_name", encoder_name_list)
-            if encoder_name == encoder_name_list[4]:
-                weights = "instagram"
-            elif encoder_name == encoder_name_list[5]:
-                weights = "noisy-student"
-            else:
-                weights = "imagenet"
-
-            self.model = smp.Linknet(encoder_name=encoder_name, 
-                                encoder_depth=5, 
-                                encoder_weights=weights, 
-                                decoder_use_batchnorm=True, 
-                                in_channels=3, 
-                                classes=2, 
-                                activation="sigmoid", 
-                                aux_params=None)
-
-        elif self.model_name == "MAnet":
-            encoder_name_list = ["efficientnet-b7", "timm-regnety_320", "resnet152", "tu-xception71", "resnext101_32x48d", "timm-efficientnet-l2"]
-
-            encoder_name = trial.suggest_categorical("encoder_name", encoder_name_list)
-            if encoder_name == encoder_name_list[4]:
-                weights = "instagram"
-            elif encoder_name == encoder_name_list[5]:
-                weights = "noisy-student"
-            else:
-                weights = "imagenet"
-
-            self.model = smp.MAnet(encoder_name=encoder_name, 
-                              encoder_depth=5, 
-                              encoder_weights=weights, 
-                              decoder_use_batchnorm=True, 
-                              decoder_channels=(256, 128, 64, 32, 16), 
-                              decoder_pab_channels=64, 
-                              in_channels=3, 
-                              classes=2, 
-                              activation="sigmoid", 
-                              aux_params=None)
+        model_num = trial.suggest_int("model_num", 0, len(self.model_list) - 1)
+        encoder_num = trial.suggest_int("encoder_num", 0, len(self.model_list[model_num]['encoders']) - 1)
+        encoder_name = self.model_list[model_num]['encoders'][encoder_num]
+        encoder_weight = {"resnext101_32x48d": "instagram", "timm-efficientnet-l2": "noisy-student"}
+        weights = encoder_weight.get(encoder_name) or "imagenet"
+        
+        self.model = eval(self.model_list[model_num]['model']
+                            + "(**self.model_list[model_num]['args'], encoder_name=encoder_name, encoder_weights=weights)")
 
 def main(args):
-    # 学習を中断しても再開できるようにDBに保存
-    study_name = args.model_name + "_" + args.dataset_name
+    # store study params to the Data base in order to restart study even if study was interrupted
+    study_name = args.study_name
     storage = f'sqlite:///{study_name}_output_database.db'
 
     objective = Objective(args)
@@ -240,7 +172,6 @@ def main(args):
                                 storage=storage,
                                 load_if_exists=True)
     study.optimize(objective, n_trials=100)
-
     print("Number of finished trials: {}".format(len(study.trials)))
 
     print("Best params:", study.best_params)
@@ -259,6 +190,5 @@ def main(args):
 if __name__ == "__main__":
     args = parse_args()
     print(args)
-    print(args.model_name, "_", args.dataset_name)
     main(args)
 
